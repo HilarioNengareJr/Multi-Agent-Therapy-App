@@ -1,68 +1,94 @@
 import logging
-from langchain_community.tools import  WikipediaQueryRun, DuckDuckGoSearchRun
-from langchain_community.utilities.wikipedia import WikipediaAPIWrapper  # Fixed import
 from langchain.tools import Tool
-search = DuckDuckGoSearchRun()
+from datetime import datetime
+from typing import List, Dict
+import re
 
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 
-def mindfulness_breathing_exercise(input: str) -> str:
-    logging.info(f"MindfulnessBreathing tool called with input: {input}")
-    return (
-        "Let's do a short breathing exercise together:\n"
-        "1. Breathe in slowly for 4 seconds.\n"
-        "2. Hold your breath for 4 seconds.\n"
-        "3. Breathe out slowly for 4 seconds.\n"
-        "4. Pause for 4 seconds.\n"
-        "Repeat this cycle a few times. 🌱"
-    )
+# In-memory storage for simplicity (replace with DB later)
+expense_log: List[Dict] = []
 
-mindfulness_tool = Tool(
-    name="MindfulnessBreathing",
-    func=mindfulness_breathing_exercise,
-    description="Guides the user through a simple mindfulness breathing exercise."
+# --- Tool Functions --- #
+
+def log_expense(input: str) -> str:
+    logging.info(f"LogExpense tool called with input: {input}")
+    try:
+        # Use regex to extract amount, category, and date from user input
+        amount_match = re.search(r"(?:R|r)(\d+(?:\.\d{1,2})?)", input)
+        category_match = re.search(r"(?i)(groceries|food|transport|bills|entertainment|shopping|fuel|rent|misc)\b", input)
+        date_match = re.search(r"(?i)on\s+([A-Za-z]+\s+\d{1,2})", input)
+
+        if not amount_match:
+            raise ValueError("Amount not found")
+        if not category_match:
+            category = "misc"
+        else:
+            category = category_match.group(1).lower()
+
+        amount = float(amount_match.group(1))
+
+        if date_match:
+            date_obj = datetime.strptime(date_match.group(1), "%B %d")
+            date = date_obj.strftime("%Y-%m-%d")
+        else:
+            date = datetime.today().strftime("%Y-%m-%d")
+
+        expense = {
+            "date": date,
+            "amount": amount,
+            "category": category,
+            "description": input
+        }
+        expense_log.append(expense)
+        return f"✅ Logged: R{amount} for {category} on {date}"
+    except Exception as e:
+        logging.error(f"Failed to log expense: {e}")
+        return "❌ Sorry, I couldn't log that expense. Please make sure to include an amount (e.g. R100), a category (e.g. groceries), and optionally a date (e.g. on July 10)."
+
+def summarize_expenses(_: str) -> str:
+    logging.info("SummarizeExpenses tool called")
+    if not expense_log:
+        return "You haven't logged any expenses yet."
+    summary = {}
+    for entry in expense_log:
+        cat = entry["category"]
+        summary[cat] = summary.get(cat, 0) + entry["amount"]
+    summary_lines = [f"{cat.capitalize()}: R{amount:.2f}" for cat, amount in summary.items()]
+    return "Here's your spending summary by category:\n" + "\n".join(summary_lines)
+
+def generate_report(_: str) -> str:
+    logging.info("GenerateReport tool called")
+    if not expense_log:
+        return "No expenses available to generate a report."
+    sorted_expenses = sorted(expense_log, key=lambda x: x['date'])
+    report_lines = [f"{e['date']} - R{e['amount']:.2f} ({e['category']})" for e in sorted_expenses]
+    total = sum(e['amount'] for e in sorted_expenses)
+    return "Expense Report:\n" + "\n".join(report_lines) + f"\n\nTotal: R{total:.2f}"
+
+# --- Tool Wrappers --- #
+log_expense_tool = Tool(
+    name="LogExpense",
+    func=log_expense,
+    description="Logs a user expense by extracting date, amount, and category from the input."
 )
 
-# Example: Wikipedia and DuckDuckGo search tools (already imported)
-wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())  # Fixed usage
-def wikipedia_tool_func(query: str) -> str:
-    logging.info(f"WikipediaSearch tool called with query: {query}")
-    return wikipedia.run(query)
-
-wikipedia_tool = Tool(
-    name="WikipediaSearch",
-    func=wikipedia_tool_func,
-    description="Searches Wikipedia for psychoeducation or mental health topics."
+summarize_expenses_tool = Tool(
+    name="SummarizeExpenses",
+    func=summarize_expenses,
+    description="Summarizes expenses grouped by category."
 )
 
-def duckduckgo_tool_func(query: str) -> str:
-    logging.info(f"DuckDuckGoSearch tool called with query: {query}")
-    return search.run(query)
-
-duckduckgo_tool = Tool(
-    name="DuckDuckGoSearch",
-    func=duckduckgo_tool_func,
-    description="Searches the web for mental health resources or definitions."
+generate_report_tool = Tool(
+    name="GenerateReport",
+    func=generate_report,
+    description="Generates a chronological report of all logged expenses."
 )
 
-def therapy_research_tool_func(query: str) -> str:
-    logging.info(f"TherapyResearch tool called with query: {query}")
-    # Use DuckDuckGo to search for therapy research and best practices
-    results = search.run(f"{query} therapy research best practices site:.gov OR site:.edu OR site:.org")
-    return (
-        "Here are some research-based insights and best practices I found:\n"
-        f"{results}\n"
-        "These results are from reputable sources. Please consult a licensed professional for personalized advice."
-    )
-
-therapy_research_tool = Tool(
-    name="TherapyResearch",
-    func=therapy_research_tool_func,
-    description=(
-        "Searches for recent research, guidelines, or best practices in therapy from reputable sources "
-        "(such as .gov, .edu, or .org domains) and summarizes the findings for the user."
-    )
-)
-
-# List of tools to use in your agent
-therapy_tools = [mindfulness_tool, wikipedia_tool, duckduckgo_tool, therapy_research_tool]
+# Exportable list of tools
+expense_tools = [
+    log_expense_tool,
+    summarize_expenses_tool,
+    generate_report_tool
+]

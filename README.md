@@ -1,58 +1,32 @@
-# 🌿 TheraSoul — Therapy That Fits You
+# 💸 Expense Monitoring Agent (LangChain + OPENAI)
 
-TheraSoul is a scalable, AI-powered mental health platform that offers **multi-persona therapy agents**, allowing users to choose from distinct therapist personalities tailored to their emotional needs, therapy style, and cultural preferences.
-
----
-
-## 🧭 Mission Statement
-> _“To democratize mental health support by delivering emotionally intelligent, personalized AI therapy through diverse personas — available anytime, anywhere.”_
+A smart, human-like AI assistant named **Penny** that helps me track and analyze my expenses through natural language input. Powered by LangChain, it uses tool-calling, memory, and intelligent parsing to log and report financial activities effortlessly.
 
 ---
 
-## 🔧 Core Concept
+## 🧠 What It Does
 
-Users can engage with a range of **unique AI therapist personas** such as:
-- 🫶 **The Empath** — gentle, nurturing, emotionally affirming
-- 💪 **The Coach** — motivating, direct, solution-focused
-- 🧘‍♂️ **The Mindful Monk** — calm, wise, grounded in mindfulness
+Penny helps me with:
 
-These agents:
-- Hold **context-aware conversations** 🧠
-- Guide users through **evidence-based techniques** like CBT, DBT, and ACT 📘
-- Adjust tone based on the user’s current state and progress 🔄
-- Can **collaborate or hand off** to other personas as needed 🧩
+- Logging expenses using free-form natural language
+- Summarizing spending by category
+- Generating full chronological expense reports
+- Providing feedback in a friendly, human-like tone
 
----
-
-## 🧩 Scalable Architecture
-
-| Layer              | Stack/Tools                                                                 |
-|-------------------|------------------------------------------------------------------------------|
-| **Frontend**       | React + Tailwind (Web & PWA), React Native (Mobile)                         |
-| **Backend**        | FastAPI (Python), WebSockets, Supabase (auth + DB)                          |
-| **LLM Agents**     | LangGraph or CrewAI for orchestration                                       |
-| **LLMs**           | GPT-4o (cloud) + Mistral/Ollama (local/offline)                             |
-| **Memory**         | ConversationSummaryMemory + vector memory for emotional tracking 🧬          |
-| **TTS/Voice**      | Coqui TTS + Whisper for voice I/O 🎙️                                        |
-| **Hosting**        | Vercel, or Fly.io + Supabase edge functions                         |
+Example inputs that I use:
+- “I spent R300 on groceries today”
+- “Add R150 for transport on July 8”
+- “Log R95 for lunch”
+- “How much have I spent on food?”
+- “Give me my expense report”
 
 ---
 
-## 🚀 Growth Roadmap
+## 🛠 Features
 
-| Phase        | Focus                                                               |
-|--------------|---------------------------------------------------------------------|
-| **MVP**       | 🌱 Launch web app with 3 personas and basic journaling             |
-| **V1 Launch** | 🔊 Add voice support, mood tracking, and user profiles             |
-| **V2 Scale**  | 📱 Mobile apps, local model fallback, and multilingual support     |
-| **V3 B2B**    | 🧑‍💼 Add dashboards and persona API for HR/partner integration     |
-| **V4**        | 🛍️ Launch custom persona marketplace + AI insights                |
-
----
-
-## 🔐 Privacy & Safety First
-
-- 🔒 End-to-end encrypted conversations
-- ✨ Consent-based logging & memory
-- 🧠 Filters for hallucinations and risky prompts
-- 📞 Escalation logic for emergency situations
+- ✅ Smart regex-based expense parsing
+- 📅 Date recognition (e.g., “on July 10” or defaults to today)
+- 🏷️ Category tagging (food, groceries, transport, etc.)
+- 💬 Interactive chat-based input/output
+- 🧾 Expense report and summaries
+- 🧠 Memory-enabled for contextual conversations

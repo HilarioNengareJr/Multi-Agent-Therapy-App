@@ -2,7 +2,6 @@ import logging
 from langchain.tools import Tool
 from datetime import datetime
 from typing import List, Dict
-import re
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -10,42 +9,14 @@ logging.basicConfig(level=logging.INFO)
 # In-memory storage for simplicity (replace with DB later)
 expense_log: List[Dict] = []
 
+# --- Debug Utilities --- #
+def log_llm_output(raw_output: str):
+    logging.info("LLM RAW OUTPUT:\n" + raw_output)
+
+def log_parsing_error(raw_output: str, error: Exception):
+    logging.error(f"Failed to parse structured expense:\n{raw_output}\nError: {error}")
+
 # --- Tool Functions --- #
-
-def log_expense(input: str) -> str:
-    logging.info(f"LogExpense tool called with input: {input}")
-    try:
-        # Use regex to extract amount, category, and date from user input
-        amount_match = re.search(r"(?:R|r)(\d+(?:\.\d{1,2})?)", input)
-        category_match = re.search(r"(?i)(groceries|food|transport|bills|entertainment|shopping|fuel|rent|misc)\b", input)
-        date_match = re.search(r"(?i)on\s+([A-Za-z]+\s+\d{1,2})", input)
-
-        if not amount_match:
-            raise ValueError("Amount not found")
-        if not category_match:
-            category = "misc"
-        else:
-            category = category_match.group(1).lower()
-
-        amount = float(amount_match.group(1))
-
-        if date_match:
-            date_obj = datetime.strptime(date_match.group(1), "%B %d")
-            date = date_obj.strftime("%Y-%m-%d")
-        else:
-            date = datetime.today().strftime("%Y-%m-%d")
-
-        expense = {
-            "date": date,
-            "amount": amount,
-            "category": category,
-            "description": input
-        }
-        expense_log.append(expense)
-        return f"✅ Logged: R{amount} for {category} on {date}"
-    except Exception as e:
-        logging.error(f"Failed to log expense: {e}")
-        return "❌ Sorry, I couldn't log that expense. Please make sure to include an amount (e.g. R100), a category (e.g. groceries), and optionally a date (e.g. on July 10)."
 
 def summarize_expenses(_: str) -> str:
     logging.info("SummarizeExpenses tool called")
@@ -68,12 +39,6 @@ def generate_report(_: str) -> str:
     return "Expense Report:\n" + "\n".join(report_lines) + f"\n\nTotal: R{total:.2f}"
 
 # --- Tool Wrappers --- #
-log_expense_tool = Tool(
-    name="LogExpense",
-    func=log_expense,
-    description="Logs a user expense by extracting date, amount, and category from the input."
-)
-
 summarize_expenses_tool = Tool(
     name="SummarizeExpenses",
     func=summarize_expenses,
@@ -86,9 +51,8 @@ generate_report_tool = Tool(
     description="Generates a chronological report of all logged expenses."
 )
 
-# Exportable list of tools
+# Exportable list of tools (LogExpense is now LLM-driven and handled in the main pipeline)
 expense_tools = [
-    log_expense_tool,
     summarize_expenses_tool,
     generate_report_tool
-]
+]  # LogExpense removed — handled via LLM parsing pipeline

@@ -8,9 +8,13 @@ from langchain.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import Runnable
-from tools import expense_tools
+from langchain.output_parsers import PydanticOutputParser
+from langchain.prompts import PromptTemplate
+from langchain.schema import HumanMessage
 from langchain.memory import ConversationBufferMemory
+from tools import expense_tools  # still used for summarization/reporting
 import logging
+from datetime import datetime
 
 load_dotenv()
 
@@ -22,6 +26,9 @@ class Expense(BaseModel):
     amount: float
     category: str
     description: str
+
+# In-memory expense log (for demo purposes)
+expense_log: List[dict] = []
 
 # Expense Agent configuration
 class ExpenseManager:
@@ -95,6 +102,47 @@ class LoggingChatOpenAI(ChatOpenAI):
         logging.info(f"Payload to ChatOpenAI: {input}")
         return super().invoke(input, *args, **kwargs)
 
+def extract_expense_from_llm(llm: BaseLanguageModel, user_input: str) -> Optional[Expense]:
+    parser = PydanticOutputParser(pydantic_object=Expense)
+    prompt = PromptTemplate(
+        template="""
+        You are a smart financial assistant. The user might type anything — a question, a report request, or a new expense.
+
+        Your task is to detect whether the input is a new expense to be logged.
+
+        If it is NOT an expense, respond with:
+        "not an expense"
+
+        If it IS an expense, return ONLY this valid JSON:
+
+        {{
+          "amount": float,
+          "category": "one of: groceries, food, transport, bills, entertainment, misc",
+          "date": "YYYY-MM-DD",
+          "description": "full original user input"
+        }}
+
+        Input: {input}
+        """,
+        input_variables=["input"]
+    )
+    formatted = prompt.format(input=user_input)
+    raw = llm.invoke([HumanMessage(content=formatted)]).content
+    logging.info("LLM RAW OUTPUT:\n" + raw)
+
+    if raw.strip().lower() == "not an expense":
+        logging.info("LLM determined this is not an expense.")
+        return None
+
+    try:
+        expense = parser.parse(raw)
+        logging.info(f"Parsed Expense Object: {expense}")
+        expense_log.append(expense.model_dump())
+        return expense
+    except Exception as e:
+        logging.error(f"Failed to parse structured expense:\n{raw}\nError: {e}")
+        return None
+
 def run_expense_agent(user_message: str, memory=None):
     logging.info(f"Agent invoked with user_message: {user_message}")
     llm = LoggingChatOpenAI(model="gpt-4o", temperature=0.5)
@@ -104,6 +152,12 @@ def run_expense_agent(user_message: str, memory=None):
     if memory is None:
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
+    # First, attempt to log the expense via LLM parser
+    expense = extract_expense_from_llm(llm, user_message)
+    if expense:
+        return f"✅ Logged: R{expense.amount} for {expense.category} on {expense.date}", memory
+
+    # If no structured data found, fall back to agent tools (e.g., summaries, reports)
     agent = create_tool_calling_agent(
         llm=assistant.llm,
         prompt=prompt,

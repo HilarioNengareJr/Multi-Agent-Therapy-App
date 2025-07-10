@@ -1,4 +1,4 @@
-# 💸 Expense Monitoring Agent (LangChain + OPENAI)
+# 💸 Expense Manager (LangChain + OPENAI)
 
 A smart, human-like AI assistant named **Penny** that helps me track and analyze my expenses through natural language input. Powered by LangChain, it uses tool-calling, memory, and intelligent parsing to log and report financial activities effortlessly.
 
